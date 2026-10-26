@@ -40,9 +40,9 @@
 
 					color: #222;
 					background-color: #f8f8f8;
-					-webkit-linear-gradient(top,#f8f8f8,#f1f1f1)
+					background: -webkit-linear-gradient(top, #f8f8f8, #f1f1f1);
 					border: 1px solid #c6c6c6;
-					-webkit-box-shadow: 0 1px 1px rgba(0,0,0,0.1)
+					-webkit-box-shadow: 0 1px 1px rgba(0,0,0,0.1);
 
 				}
 
@@ -127,6 +127,8 @@
 				#content input {
 
 					width: 560px;
+					max-width: calc(100vw - 32px);
+					box-sizing: border-box;
 					padding: 4px 9px;
 					margin-bottom: 16px;
 					font: 16px arial,sans-serif;
@@ -150,6 +152,14 @@
 						border-color: #4d90fe;
 
 					}
+
+			@media (max-width: 600px) {
+				#content { margin-top: 120px; white-space: normal; padding: 0 16px; }
+				#content #logo { max-width: min(254px, 75vw); height: auto; }
+				#content input { width: 560px; max-width: 100%; }
+				#topbar { font-size: 10px; }
+				#topbar td { padding-left: 4px; padding-right: 4px; }
+			}
 
 			#bottombar {
 
@@ -254,16 +264,16 @@
 		<table id="topbar">
 			<tr>
 				<td class="box2d" onClick="location.href = 'https://oscadia.net/public/osmail';"><span>+You</span></td>
-				<td class="box2d selected" onClick="location.href = 'http://oscadia.net';"><span>Search</span></td>
-				<td class="box2d" onClick="location.href = 'http://oscadia.net/public/oscatranslate';"><span>translate</span></td>
-				<td class="box2d" onClick="location.href = 'http://oscadia.net/public/omap';"><span>Maps</span></td>
+				<td class="box2d selected" onClick="location.href = 'https://oscadia.net';"><span>Search</span></td>
+				<td class="box2d" onClick="location.href = 'https://oscadia.net/public/oscatranslate';"><span>translate</span></td>
+				<td class="box2d" onClick="location.href = 'https://oscadia.net/public/omap';"><span>Maps</span></td>
 				<td class="box2d" onClick="location.href = 'https://cucumber555.github.io/game/';"><span>Play</span></td>
 				<td class="box2d" onClick="location.href = 'https://oscadia.net/alles/';"><span>alles</span></td>
-				<td class="box2d" onClick="location.href = 'http://oscadia.net/';"><span>oscadia</span></td>
+				<td class="box2d" onClick="location.href = 'https://oscadia.net/';"><span>oscadia</span></td>
 				<td class="box2d" onClick="location.href = 'https://oscadia.net/public/osmail';"><span>osmail</span></td>
 				<td class="box2d" onClick="location.href = 'https://asfa.oscadia.net';"><span>asfa</span></td>
 				<td class="box2d" onClick="location.href = 'https://asfa.oscadia.net/exis/';"><span>exis</span></td>
-				<td class="box2d" onClick="location.href = 'http://oscadia.net/public/about';"><span>about</span></td>
+				<td class="box2d" onClick="location.href = 'https://oscadia.net/public/about';"><span>about</span></td>
 				<td class="box2d empty" style="width:10%"><span>&nbsp;</span></td>
 				<td class="box2d empty" style="width:20%"><span>&nbsp;</span></td>
 				<td class="box2d empty" style="width:20%"><span>&nbsp;</span></td>
@@ -274,7 +284,7 @@
 			</tr>
 		</table>
 
-		<span style="position:absolute;top:50px;right:30px;"><button id="btnG" class="box2d" style="color:#fff;font-size:11px;font-weight:bold;padding: 0 16px;border:1px solid transparent;background-color:#d14836;text-transform: uppercase;">Sign in</button></span>
+		<span style="position:absolute;top:50px;right:30px;"><button id="btnSignIn" class="box2d" style="color:#fff;font-size:11px;font-weight:bold;padding: 0 16px;border:1px solid transparent;background-color:#d14836;text-transform: uppercase;">Sign in</button></span>
 
 		<div id="content">
 			<img id="logo" src="data:image/png;base64,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" width="254" height="56"class="box2d"><br />
@@ -301,7 +311,7 @@
 			<a href="https://www.google.com/services/" class="box2d">Business Solutions</a>
 			<a href="https://www.google.com/intl/en/policies/" class="box2d">Privacy & Terms</a>
 			<a href="https://oscadia.net" class="box2d">+oscadia</a>
-			<a href="http://oscadia.net/public/about" class="box2d">About oscadia</a>
+			<a href="https://oscadia.net/public/about" class="box2d">About oscadia</a>
 		</div>
 
 		<!-- <script src="http://www.google.com/uds/api?file=uds.js&v=0.1" type="text/javascript"></script> -->
