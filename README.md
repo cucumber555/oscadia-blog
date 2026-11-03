@@ -30,11 +30,3 @@ Uploaded media tokens are replaced with the real storage URLs when publishing. S
 
 ## Important
 The attachments bucket is public because blog posts are public. Never upload private or sensitive files. The included client is a starter; test with a non-admin account before launch.
-
-
-## Deep links and administrator page
-- `404.html` provides GitHub Pages single-page-app fallback for `/profiles/...`, `/post/...`, `/write`, `/login`, and `/admin` deep links.
-- After deploying, open `https://blog.oscadia.net/admin` while signed in with `cucu@oscadia.net`.
-- The admin page manages official/personal badges, posts, comments, and member reports.
-- Run the updated `supabase-upgrade.sql` once in the existing OSCADIA Supabase SQL Editor. It adds the report table and server-side admin policies. It does not drop existing tables or rows.
-- The admin identity is checked server-side using the authenticated account email `cucu@oscadia.net`; the browser UI check is only for display, not security.

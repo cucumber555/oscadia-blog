@@ -1,20 +1,20 @@
 (() => {
 const cfg=window.OSCADIA_BLOG_CONFIG||{}, $=id=>document.getElementById(id);
 const S={db:null,user:null,profile:null,route:null,selectedFiles:[],likes:new Set()};
-const E={notice:$("notice"),auth:$("authPanel"),write:$("composer"),profile:$("profilePanel"),post:$("postPanel"),admin:$("adminPanel"),feedPanel:$("feedPanel"),feed:$("feed"),label:$("userLabel"),authButton:$("authButton"),myProfile:$("myProfile")};
+const E={notice:$("notice"),auth:$("authPanel"),write:$("composer"),profile:$("profilePanel"),post:$("postPanel"),feedPanel:$("feedPanel"),feed:$("feed"),label:$("userLabel"),authButton:$("authButton"),myProfile:$("myProfile"),admin:$("adminPanel"),adminNav:$("adminNav")};
 const configured=cfg.supabaseUrl&&!cfg.supabaseUrl.includes("PASTE_")&&cfg.supabaseAnonKey&&!cfg.supabaseAnonKey.includes("PASTE_");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const safeUrl=s=>{try{let u=new URL(s);return u.protocol==="https:"||u.protocol==="http:"?u.href:null}catch{return null}};
 function notice(s,error=false){E.notice.textContent=s;E.notice.classList.toggle("error",error);E.notice.hidden=false}
 function clearNotice(){E.notice.hidden=true;E.notice.textContent=""}
-function only(which){[E.auth,E.write,E.profile,E.post,E.admin].forEach(x=>x.hidden=true);E.feedPanel.hidden=which!=="feed";if(which==="auth")E.auth.hidden=false;if(which==="write")E.write.hidden=false;if(which==="profile")E.profile.hidden=false;if(which==="post")E.post.hidden=false;if(which==="admin")E.admin.hidden=false}
+function only(which){[E.auth,E.write,E.profile,E.post,E.admin].filter(Boolean).forEach(x=>x.hidden=true);E.feedPanel.hidden=which!=="feed";if(which==="auth")E.auth.hidden=false;if(which==="write")E.write.hidden=false;if(which==="profile")E.profile.hidden=false;if(which==="post")E.post.hidden=false;if(which==="admin"&&E.admin)E.admin.hidden=false}
 function badge(p){if(p?.badge_type==="official")return '<span class="badge official">✓ 공식</span>';if(p?.badge_type==="personal"&&p?.badge_approved)return '<span class="badge personal">✓ 인증</span>';return ""}
 function avatar(p,large=false){let cls="avatar"+(large?" large":"");if(p?.avatar_url&&safeUrl(p.avatar_url))return `<img class="${cls}" src="${esc(p.avatar_url)}" alt="">`;return `<span class="${cls}">${esc((p?.display_name||p?.username||"?").slice(0,1).toUpperCase())}</span>`}
 function author(p){let u=p?.username||"user";return `<a class="author" href="/profiles/${encodeURIComponent(u)}">${esc(p?.display_name||u)}</a> ${badge(p)}`}
 function date(s){return new Date(s).toLocaleString("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})}
 function shortId(id){return String(id).replaceAll("-","").slice(0,8)}
 function hrefPost(p){return `/post/${encodeURIComponent(p.username||p.profiles?.username||"user")}/${new Date(p.created_at).toISOString().slice(0,10).replaceAll("-","")}-${shortId(p.id)}`}
-function route(){let saved=sessionStorage.getItem("oscadia_blog_route");if(saved){sessionStorage.removeItem("oscadia_blog_route");history.replaceState({}, "", saved)}let p=location.pathname.split("/").filter(Boolean).map(x=>{try{return decodeURIComponent(x)}catch{return x}});if(p[0]==="profiles"&&p[1])return{type:"profile",username:p[1]};if(p[0]==="post"&&p[1]&&p[2])return{type:"post",username:p[1],slug:p[2]};if(p[0]==="write")return{type:"write"};if(p[0]==="login")return{type:"auth"};if(p[0]==="admin")return{type:"admin"};return{type:"feed"}}
+function route(){let saved=sessionStorage.getItem("oscadia_blog_route");if(saved){sessionStorage.removeItem("oscadia_blog_route");history.replaceState({}, "", saved)}let p=decodeURI(location.pathname).split("/").filter(Boolean);if(p[0]==="profiles"&&p[1])return{type:"profile",username:p[1]};if(p[0]==="post"&&p[1]&&p[2])return{type:"post",username:p[1],slug:p[2]};if(p[0]==="write")return{type:"write"};if(p[0]==="admin")return{type:"admin"};if(p[0]==="login")return{type:"auth"};return{type:"feed"}}
 function go(path){history.pushState({}, "",path);S.route=route();renderRoute();scrollTo(0,0)}
 function renderBody(raw=""){
   // Supported inline syntax: ![alt](url), [text](url), {{video:url}}, and plain URLs.
@@ -37,8 +37,7 @@ async function ensureProfile(user){
  let r=await S.db.from("blog_profiles").insert({id:user.id,username:name,display_name:base,bio:""}).select().single();if(r.error)throw r.error;S.profile=r.data;return r.data
 }
 async function session(){let {data:{session}}=await S.db.auth.getSession();S.user=session?.user||null;S.profile=null;if(S.user){try{await ensureProfile(S.user)}catch(e){console.error(e);notice("프로필 준비 오류: "+e.message,true)}}updateAccount()}
-function isAdmin(){return (S.user?.email||"").toLowerCase()==="cucu@oscadia.net"}
-function updateAccount(){E.label.textContent=S.user?(S.profile?.display_name||S.user.email):"로그아웃 상태";E.authButton.textContent=S.user?"로그아웃":"로그인";E.myProfile.hidden=!S.profile;if(S.profile)E.myProfile.href="/profiles/"+encodeURIComponent(S.profile.username);$("adminNav").hidden=!isAdmin()}
+function updateAccount(){E.label.textContent=S.user?(S.profile?.display_name||S.user.email):"로그아웃 상태";E.authButton.textContent=S.user?"로그아웃":"로그인";E.myProfile.hidden=!S.profile;if(S.profile)E.myProfile.href="/profiles/"+encodeURIComponent(S.profile.username);if(E.adminNav)E.adminNav.hidden=(S.user?.email||"").toLowerCase()!=="cucu@oscadia.net"}
 async function counts(profileId){let [f1,f2]=await Promise.all([S.db.from("blog_follows").select("*",{count:"exact",head:true}).eq("followed_id",profileId),S.db.from("blog_follows").select("*",{count:"exact",head:true}).eq("follower_id",profileId)]);return{followers:f1.count||0,following:f2.count||0}}
 async function isFollowing(id){if(!S.user)return false;let {data}=await S.db.from("blog_follows").select("followed_id").eq("follower_id",S.user.id).eq("followed_id",id).maybeSingle();return !!data}
 async function followToggle(id){if(!S.user){notice("팔로우하려면 로그인하세요.");go("/login");return}if(id===S.user.id)return;let {data}=await S.db.from("blog_follows").select("followed_id").eq("follower_id",S.user.id).eq("followed_id",id).maybeSingle();let r=data?await S.db.from("blog_follows").delete().eq("follower_id",S.user.id).eq("followed_id",id):await S.db.from("blog_follows").insert({follower_id:S.user.id,followed_id:id});if(r.error){notice(r.error.message,true);return}if(S.route.type==="profile")loadProfile(S.route.username)}
@@ -77,60 +76,13 @@ async function loadPost(username,slug){
  let [att,cr,lk]=await Promise.all([S.db.from("blog_attachments").select("*").eq("post_id",p.id).order("created_at"),S.db.from("blog_comments").select("*, profiles:blog_profiles!blog_comments_author_id_fkey(id,username,display_name,avatar_url,badge_type,badge_approved)").eq("post_id",p.id).order("created_at"),S.user?S.db.from("blog_likes").select("post_id").eq("post_id",p.id).eq("user_id",S.user.id).maybeSingle():Promise.resolve({data:null})]);
  let files=(att.data||[]).map(a=>{let u=safeUrl(a.public_url);if(!u)return"";if(a.mime_type?.startsWith("image/"))return `<a class="attachment" href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="${esc(a.file_name)}">${esc(a.file_name)}</a>`;if(a.mime_type?.startsWith("video/"))return `<div class="attachment"><video controls preload="metadata" src="${esc(u)}"></video><a href="${esc(u)}" target="_blank" rel="noopener">${esc(a.file_name)}</a></div>`;return `<a class="attachment" href="${esc(u)}" target="_blank" rel="noopener noreferrer" download>파일 · ${esc(a.file_name)}</a>`}).join("");
  let owner=S.user?.id===p.author_id;
- E.post.innerHTML=`<div class="post-meta">${avatar(p.profiles)}<div>${author(p.profiles)}<div>${date(p.created_at)}</div></div></div><h1 class="post-title">${esc(p.title)}</h1><div class="post-body">${renderBody(p.body||"")}</div><div class="attachment-list">${files}</div><div class="post-actions"><button id="postLike" class="${lk.data?"liked":""}">${lk.data?"♥":"♡"} 좋아요 <span id="likeCount">…</span></button>${owner||isAdmin()?'<button id="deletePost" class="quiet">게시글 삭제</button>':""}${S.user&&!owner?'<button id="reportPost" class="quiet">신고</button>':""}</div>
- <section class="comments" id="comments"><h2 style="font-size:17px">댓글 ${(cr.data||[]).length}</h2>${(cr.data||[]).map(c=>`<div class="comment"><div class="post-meta">${author(c.profiles)} <span>${date(c.created_at)}</span>${S.user&&(S.user.id===c.author_id||isAdmin())?`<button data-delete-comment="${c.id}" class="quiet">삭제</button>`:""}${S.user&&S.user.id!==c.author_id?`<button data-report-comment="${c.id}" class="quiet">신고</button>`:""}</div><div>${renderBody(c.body)}</div></div>`).join("")}${S.user?'<form id="commentForm" class="comment-form"><input id="commentText" maxlength="3000" placeholder="댓글을 남겨 보세요" required><button class="primary">등록</button></form>':'<p class="muted small">댓글을 작성하려면 로그인하세요.</p>'}</section>`;
+ E.post.innerHTML=`<div class="post-meta">${avatar(p.profiles)}<div>${author(p.profiles)}<div>${date(p.created_at)}</div></div></div><h1 class="post-title">${esc(p.title)}</h1><div class="post-body">${renderBody(p.body||"")}</div><div class="attachment-list">${files}</div><div class="post-actions"><button id="postLike" class="${lk.data?"liked":""}">${lk.data?"♥":"♡"} 좋아요 <span id="likeCount">…</span></button>${owner?'<button id="deletePost" class="quiet">게시글 삭제</button>':""}</div>
+ <section class="comments" id="comments"><h2 style="font-size:17px">댓글 ${(cr.data||[]).length}</h2>${(cr.data||[]).map(c=>`<div class="comment"><div class="post-meta">${author(c.profiles)} <span>${date(c.created_at)}</span>${S.user&&(S.user.id===c.author_id||S.user.email?.toLowerCase()==="cucu@oscadia.net")?`<button data-delete-comment="${c.id}" class="quiet">삭제</button>`:""}</div><div>${renderBody(c.body)}</div></div>`).join("")}${S.user?'<form id="commentForm" class="comment-form"><input id="commentText" maxlength="3000" placeholder="댓글을 남겨 보세요" required><button class="primary">등록</button></form>':'<p class="muted small">댓글을 작성하려면 로그인하세요.</p>'}</section>`;
  likeCount(p.id).then(n=>{if($("likeCount"))$("likeCount").textContent=n});$("postLike").onclick=()=>toggleLike(p.id);
- if($("reportPost"))$("reportPost").onclick=()=>reportItem("post",p.id);
-  if(owner||isAdmin())$("deletePost").onclick=async()=>{if(confirm("이 게시글을 삭제할까요?")){let r=await S.db.from("blog_posts").delete().eq("id",p.id);if(r.error)notice(r.error.message,true);else go("/")}};
+ if(owner)$("deletePost").onclick=async()=>{if(confirm("이 게시글을 삭제할까요?")){let r=await S.db.from("blog_posts").delete().eq("id",p.id);if(r.error)notice(r.error.message,true);else go("/")}};
  if(S.user)$("commentForm").onsubmit=async e=>{e.preventDefault();let body=$("commentText").value.trim();if(!body)return;let r=await S.db.from("blog_comments").insert({post_id:p.id,author_id:S.user.id,body});if(r.error)notice(r.error.message,true);else loadPost(username,slug)};
- E.post.querySelectorAll("[data-report-comment]").forEach(b=>b.onclick=()=>reportItem("comment",b.dataset.reportComment));
-  E.post.querySelectorAll("[data-delete-comment]").forEach(b=>b.onclick=async()=>{let r=await S.db.from("blog_comments").delete().eq("id",b.dataset.deleteComment);if(r.error)notice(r.error.message,true);else loadPost(username,slug)})
+ E.post.querySelectorAll("[data-delete-comment]").forEach(b=>b.onclick=async()=>{let r=await S.db.from("blog_comments").delete().eq("id",b.dataset.deleteComment);if(r.error)notice(r.error.message,true);else loadPost(username,slug)})
 }
-
-async function loadAdmin(){
- only("admin");
- const root=$("adminContent");
- root.innerHTML='<div class="loading">관리자 데이터를 불러오는 중…</div>';
- const [pr,posts,comments,reports]=await Promise.all([
-  S.db.from("blog_profiles").select("id,username,display_name,badge_type,badge_approved").order("username",{ascending:true}).limit(200),
-  S.db.from("blog_posts").select("id,author_id,title,created_at").order("created_at",{ascending:false}).limit(100),
-  S.db.from("blog_comments").select("id,author_id,post_id,body,created_at").order("created_at",{ascending:false}).limit(100),
-  S.db.from("blog_reports").select("*").order("created_at",{ascending:false}).limit(100)
- ]);
- const err=[pr,posts,comments,reports].find(x=>x.error);
- if(err){root.innerHTML=`<div class="notice error">관리자 데이터를 불러오지 못했습니다: ${esc(err.error.message)}<br>supabase-upgrade.sql을 실행했는지 확인하세요.</div>`;return}
- const profiles=pr.data||[], postRows=posts.data||[], commentRows=comments.data||[], reportRows=reports.data||[];
- const followerRows=await S.db.from("blog_follows").select("followed_id");
- const followerCounts={};(followerRows.data||[]).forEach(x=>followerCounts[x.followed_id]=(followerCounts[x.followed_id]||0)+1);
- const byId=Object.fromEntries(profiles.map(p=>[p.id,p]));
- root.innerHTML=`
- <div class="admin-stats"><div class="admin-stat"><strong>${profiles.length}</strong><span>회원</span></div><div class="admin-stat"><strong>${postRows.length}</strong><span>게시글</span></div><div class="admin-stat"><strong>${commentRows.length}</strong><span>댓글</span></div><div class="admin-stat"><strong>${reportRows.filter(r=>r.status!=="resolved").length}</strong><span>미처리 신고</span></div></div>
- <section class="admin-section"><h2>회원 및 인증 배지</h2><p class="muted small">공식 배지는 관리자가 지정합니다. 개인 인증 배지는 팔로워 100명 이상인 계정만 승인할 수 있습니다. 관리자 계정은 예외입니다.</p>
- <div class="admin-list">${profiles.map(p=>{let n=followerCounts[p.id]||0;return `<article class="admin-row"><div class="admin-row-main"><strong>${esc(p.display_name||p.username)}</strong><span class="muted">@${esc(p.username)} · 팔로워 ${n}명</span><span>${badge(p)||'<span class="muted small">배지 없음</span>'}</span></div><div class="admin-row-actions"><button class="secondary" data-badge-official="${p.id}">${p.badge_type==="official"?"공식 해제":"공식 지정"}</button><button class="secondary" data-badge-personal="${p.id}" ${n<100&&p.id!==S.user.id?"disabled":""}>${p.badge_type==="personal"&&p.badge_approved?"인증 취소":"개인 인증 승인"}</button></div></article>`}).join("")||'<p class="empty">회원이 없습니다.</p>'}</div></section>
- <section class="admin-section"><h2>게시글 관리</h2><div class="admin-list">${postRows.map(p=>`<article class="admin-row"><div class="admin-row-main"><strong>${esc(p.title)}</strong><span class="muted">${esc(byId[p.author_id]?.username||"알 수 없음")} · ${date(p.created_at)}</span></div><button class="quiet" data-admin-delete-post="${p.id}">삭제</button></article>`).join("")||'<p class="empty">게시글이 없습니다.</p>'}</div></section>
- <section class="admin-section"><h2>댓글 관리</h2><div class="admin-list">${commentRows.map(c=>`<article class="admin-row"><div class="admin-row-main"><strong>${esc((c.body||"").slice(0,100))}</strong><span class="muted">${esc(byId[c.author_id]?.username||"알 수 없음")} · ${date(c.created_at)}</span></div><button class="quiet" data-admin-delete-comment="${c.id}">삭제</button></article>`).join("")||'<p class="empty">댓글이 없습니다.</p>'}</div></section>
- <section class="admin-section"><h2>신고 관리</h2><div class="admin-list">${reportRows.map(r=>`<article class="admin-row"><div class="admin-row-main"><strong>${esc(r.target_type)} 신고 · ${esc(r.reason||"사유 없음")}</strong><span class="muted">신고자 ${esc(byId[r.reporter_id]?.username||"알 수 없음")} · ${date(r.created_at)} · ${esc(r.status||"open")}</span></div><div class="admin-row-actions"><button class="secondary" data-report-resolve="${r.id}">처리 완료</button><button class="quiet" data-report-delete="${r.id}">신고 삭제</button></div></article>`).join("")||'<p class="empty">신고가 없습니다.</p>'}</div></section>`;
- root.querySelectorAll("[data-badge-official]").forEach(b=>b.onclick=()=>adminSetBadge(b.dataset.badgeOfficial,"official"));
- root.querySelectorAll("[data-badge-personal]").forEach(b=>b.onclick=()=>adminSetBadge(b.dataset.badgePersonal,"personal"));
- root.querySelectorAll("[data-admin-delete-post]").forEach(b=>b.onclick=async()=>{if(!confirm("이 게시글을 삭제할까요?"))return;let r=await S.db.from("blog_posts").delete().eq("id",b.dataset.adminDeletePost);if(r.error)notice(r.error.message,true);else loadAdmin()});
- root.querySelectorAll("[data-admin-delete-comment]").forEach(b=>b.onclick=async()=>{if(!confirm("이 댓글을 삭제할까요?"))return;let r=await S.db.from("blog_comments").delete().eq("id",b.dataset.adminDeleteComment);if(r.error)notice(r.error.message,true);else loadAdmin()});
- root.querySelectorAll("[data-report-resolve]").forEach(b=>b.onclick=async()=>{let r=await S.db.from("blog_reports").update({status:"resolved"}).eq("id",b.dataset.reportResolve);if(r.error)notice(r.error.message,true);else loadAdmin()});
- root.querySelectorAll("[data-report-delete]").forEach(b=>b.onclick=async()=>{let r=await S.db.from("blog_reports").delete().eq("id",b.dataset.reportDelete);if(r.error)notice(r.error.message,true);else loadAdmin()});
-}
-async function adminSetBadge(id,type){
- let current=await S.db.from("blog_profiles").select("badge_type,badge_approved,username").eq("id",id).single();
- if(current.error){notice(current.error.message,true);return}
- let next=type==="official"?(current.data.badge_type==="official"?{badge_type:null,badge_approved:false}:{badge_type:"official",badge_approved:false}):(current.data.badge_type==="personal"&&current.data.badge_approved?{badge_type:null,badge_approved:false}:{badge_type:"personal",badge_approved:true});
- let r=await S.db.from("blog_profiles").update(next).eq("id",id);
- if(r.error)notice(r.error.message,true);else{notice("인증 배지 설정을 저장했습니다.");loadAdmin()}
-}
-async function reportItem(type,id){
- if(!S.user){notice("신고하려면 로그인하세요.");go("/login");return}
- let reason=prompt("신고 사유를 입력하세요.");if(!reason?.trim())return;
- let r=await S.db.from("blog_reports").insert({reporter_id:S.user.id,target_type:type,target_id:id,reason:reason.trim().slice(0,500)});
- if(r.error)notice(r.error.message,true);else notice("신고가 접수되었습니다.")
-}
-
 function insertAtCursor(text){let ta=$("postBody"),start=ta.selectionStart,end=ta.selectionEnd;ta.setRangeText(text,start,end,"end");ta.focus()}
 function addLink(){let url=prompt("https://로 시작하는 URL을 입력하세요");if(!url)return;let safe=safeUrl(url);if(!safe){notice("http 또는 https 주소만 사용할 수 있습니다.",true);return}let label=prompt("링크에 표시할 글자",safe)||safe;insertAtCursor(`[${label.replace(/[\]]/g,"")}](${safe})`)}
 async function publish(){
@@ -150,7 +102,31 @@ async function publish(){
   S.selectedFiles=[];$("postTitle").value="";$("postBody").value="";$("mediaFiles").value="";$("selectedFiles").textContent="";$("uploadStatus").textContent="";go(hrefPost({...post,username:S.profile.username}));
  }catch(e){notice("게시글 저장 오류: "+e.message,true)}finally{$("publish").disabled=false}
 }
-async function renderRoute(){clearNotice();if(!configured){only("feed");E.feed.innerHTML='<div class="empty">config.js에 OSCADIA Supabase Project URL과 anon/public key를 입력하세요.</div>';return}if(S.route.type==="auth"){only("auth");return}if(S.route.type==="write"){if(!S.user){only("auth");notice("글을 작성하려면 로그인하세요.")}else only("write");return}if(S.route.type==="profile")return loadProfile(S.route.username);if(S.route.type==="post")return loadPost(S.route.username,S.route.slug);if(S.route.type==="admin"){if(!isAdmin()){only("feed");notice("관리자 계정만 접근할 수 있습니다.",true);return}return loadAdmin()}only("feed");return loadPosts($("search").value.trim())}
+async function loadAdmin(){
+ only("admin");
+ if(!S.user){notice("관리자 페이지는 로그인 후 이용할 수 있습니다.",true);go("/login");return}
+ if((S.user.email||"").toLowerCase()!=="cucu@oscadia.net"){E.admin.innerHTML='<div class="empty">관리자 권한이 없습니다.</div>';return}
+ E.admin.innerHTML='<div class="loading">관리자 데이터를 불러오는 중…</div>';
+ const [pr,po,co]=await Promise.all([
+  S.db.from("blog_profiles").select("id,username,display_name,badge_type,badge_approved,avatar_url").order("username").limit(300),
+  S.db.from("blog_posts").select("id,title,created_at,author_id").order("created_at",{ascending:false}).limit(100),
+  S.db.from("blog_comments").select("id,body,created_at,author_id,post_id").order("created_at",{ascending:false}).limit(100)
+ ]);
+ if(pr.error){E.admin.innerHTML=`<div class="notice error">회원 목록 오류: ${esc(pr.error.message)}</div>`;return}
+ E.admin.innerHTML=`<div class="feed-heading"><div><p class="eyebrow">OSCADIA BLOG</p><h1>관리자 페이지</h1><p class="muted">회원 인증 배지와 게시글을 관리합니다.</p></div></div>
+ <section class="panel"><h2>회원 및 인증 배지</h2><p class="muted small">파란색 공식 배지 또는 노란색 개인 인증 배지를 지정할 수 있습니다. 개인 인증은 팔로워 100명 이상이어야 합니다.</p>
+ <div class="search-row"><input id="adminMemberSearch" placeholder="아이디 또는 표시 이름 검색"></div><div id="adminMembers">${(pr.data||[]).map(x=>adminMember(x)).join("")||'<p class="empty">회원이 없습니다.</p>'}</div></section>
+ <section class="panel"><h2>최근 게시글</h2>${po.error?`<p class="notice error">${esc(po.error.message)}</p>`:(po.data||[]).map(x=>`<div class="admin-row"><div><strong>${esc(x.title)}</strong><div class="muted small">${date(x.created_at)}</div></div><button class="quiet" data-admin-delete-post="${x.id}">삭제</button></div>`).join("")||'<p class="empty">게시글이 없습니다.</p>'}</section>
+ <section class="panel"><h2>최근 댓글</h2>${co.error?`<p class="notice error">${esc(co.error.message)}</p>`:(co.data||[]).map(x=>`<div class="admin-row"><div>${esc((x.body||"").slice(0,120))}<div class="muted small">${date(x.created_at)}</div></div><button class="quiet" data-admin-delete-comment="${x.id}">삭제</button></div>`).join("")||'<p class="empty">댓글이 없습니다.</p>'}</section>`;
+ const search=$("adminMemberSearch");if(search)search.oninput=()=>{let q=search.value.toLowerCase();document.querySelectorAll("[data-admin-member]").forEach(el=>el.hidden=!el.dataset.adminMember.includes(q))};
+}
+function adminMember(p){return `<div class="admin-row" data-admin-member="${esc((p.username+" "+(p.display_name||"")).toLowerCase())}"><div><strong>${esc(p.display_name||p.username)}</strong><div class="muted small">@${esc(p.username)} · ${p.badge_type==="official"?"공식 배지":p.badge_type==="personal"&&p.badge_approved?"개인 인증":"일반 회원"}</div></div><div class="admin-controls"><button class="secondary" data-admin-badge="official" data-admin-user="${p.id}">공식 지정</button><button class="secondary" data-admin-badge="personal" data-admin-user="${p.id}">개인 인증</button><button class="quiet" data-admin-badge="none" data-admin-user="${p.id}">배지 해제</button></div></div>`}
+async function adminAction(e){if((S.user?.email||"").toLowerCase()!=="cucu@oscadia.net"){notice("관리자 권한이 없습니다.",true);return}let b=e.target.closest("[data-admin-badge],[data-admin-delete-post],[data-admin-delete-comment]");if(!b)return;
+ if(b.dataset.adminBadge){let type=b.dataset.adminBadge;let values=type==="none"?{badge_type:null,badge_approved:false}:type==="official"?{badge_type:"official",badge_approved:false}:{badge_type:"personal",badge_approved:true};let r=await S.db.from("blog_profiles").update(values).eq("id",b.dataset.adminUser);if(r.error)notice("배지 변경 실패: "+r.error.message,true);else notice("배지 설정을 변경했습니다.");loadAdmin();return}
+ if(b.dataset.adminDeletePost){if(!confirm("이 게시글을 삭제할까요?"))return;let r=await S.db.from("blog_posts").delete().eq("id",b.dataset.adminDeletePost);if(r.error)notice(r.error.message,true);loadAdmin();return}
+ if(b.dataset.adminDeleteComment){if(!confirm("이 댓글을 삭제할까요?"))return;let r=await S.db.from("blog_comments").delete().eq("id",b.dataset.adminDeleteComment);if(r.error)notice(r.error.message,true);loadAdmin()}
+}
+async function renderRoute(){clearNotice();if(!configured){only("feed");E.feed.innerHTML='<div class="empty">config.js에 OSCADIA Supabase Project URL과 anon/public key를 입력하세요.</div>';return}if(S.route.type==="auth"){only("auth");return}if(S.route.type==="admin"){return loadAdmin()}if(S.route.type==="write"){if(!S.user){only("auth");notice("글을 작성하려면 로그인하세요.")}else only("write");return}if(S.route.type==="profile")return loadProfile(S.route.username);if(S.route.type==="post")return loadPost(S.route.username,S.route.slug);only("feed");return loadPosts($("search").value.trim())}
 async function init(){if(!configured){E.feed.innerHTML='<div class="empty">README.md를 확인하고 config.js를 설정하세요.</div>';return}S.db=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey);await session();S.route=route();await renderRoute();S.db.auth.onAuthStateChange(async()=>{await session();if(S.route.type==="feed")loadPosts($("search").value.trim())})}
 E.authButton.onclick=async()=>{if(S.user){let r=await S.db.auth.signOut();if(r.error)notice(r.error.message,true);else{S.user=null;S.profile=null;updateAccount();go("/")}}else go("/login")};
 $("signIn").onclick=async()=>{let r=await S.db.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});if(r.error)notice(r.error.message,true);else{await session();go("/")}};
@@ -160,6 +136,6 @@ $("insertLink").onclick=addLink;$("insertMedia").onclick=()=>$("mediaFiles").cli
 $("mediaFiles").onchange=()=>{let picked=[...$("mediaFiles").files];if(!picked.length)return;let start=S.selectedFiles.length;S.selectedFiles.push(...picked);insertAtCursor(picked.map((f,i)=>`{{upload:${start+i}}}`).join("\n"));$("selectedFiles").textContent=S.selectedFiles.map((f,i)=>`${i}: ${f.name}`).join(" · ");$("mediaFiles").value=""};
 $("searchBtn").onclick=()=>loadPosts($("search").value.trim());$("search").onkeydown=e=>{if(e.key==="Enter")loadPosts($("search").value.trim())};
 E.feed.addEventListener("click",e=>{let b=e.target.closest("[data-like]");if(b)toggleLike(b.dataset.like)});
-E.myProfile.onclick=e=>{e.preventDefault();if(S.profile)go("/profiles/"+encodeURIComponent(S.profile.username))};$("adminNav").onclick=e=>{e.preventDefault();go("/admin")};
-window.onpopstate=()=>{S.route=route();renderRoute()};init();
+E.myProfile.onclick=e=>{e.preventDefault();if(S.profile)go("/profiles/"+encodeURIComponent(S.profile.username))};
+document.addEventListener("click",adminAction);window.onpopstate=()=>{S.route=route();renderRoute()};init();
 })();
